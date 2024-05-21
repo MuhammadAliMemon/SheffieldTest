@@ -1,24 +1,16 @@
+from apscheduler.schedulers.blocking import BlockingScheduler
 import requests
 
+scheduler = BlockingScheduler()
 
-def modify_and_post_customers():
-    response = requests.get('http://127.0.0.1:5000/customers')
-    customer_data = response.json()
+@scheduler.scheduled_job('interval', hours=1)
+def scheduled_job():
+    response = requests.get('http://localhost:5000/customers?status=active')
+    active_customers = response.json()
+    for customer in active_customers:
+        customer['name'] = f"{customer['firstname']} {customer['surname']}"
+        payload = {'customer': customer}
+        target_response = requests.post('https://postman-echo.com/post', json=payload)
+        print(target_response.status_code)
 
-    for customer in customer_data:
-        customer['name'] = customer['firstname'] + ' ' + customer['surname']
-        del customer['firstname']
-        del customer['surname']
-
-    target_url = 'https://postman-echo.com/post'
-
-    for customer in customer_data:
-        response = requests.post(target_url, json=customer)
-        if response.status_code == 200:
-            print(f'Success: HTTP Response Code - {response.status_code}')
-        else:
-            print(f'Failed: HTTP Response Code - {response.status_code}')
-            print(response.text)
-
-
-modify_and_post_customers()
+scheduler.start()
